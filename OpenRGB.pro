@@ -10,6 +10,8 @@
 QT +=                                                                                           \
     core                                                                                        \
     gui                                                                                         \
+    qml                                                                                         \
+    quick                                                                                       \
 
 #-----------------------------------------------------------------------------------------------#
 # Set compiler to use C++17 to make std::filesystem available                                   #
@@ -164,7 +166,8 @@ INCLUDEPATH +=                                                                  
     RGBController/                                                                              \
     qt/                                                                                         \
     SPDAccessor/                                                                                \
-    SuspendResume/
+    SuspendResume/                                                                              \
+    ui/
 
 HEADERS +=                                                                                      \
     $$GUI_H                                                                                     \
@@ -207,6 +210,7 @@ HEADERS +=                                                                      
     RGBController/RGBControllerKeyNames.h                                                       \
     RGBController/RGBController_Network.h                                                       \
     startup/startup.h                                                                           \
+    ui/DeviceListModel.h                                                                        \
 
 SOURCES +=                                                                                      \
     $$GUI_CPP                                                                                   \
@@ -272,9 +276,11 @@ SOURCES +=                                                                      
     RGBController/RGBController_Dummy.cpp                                                       \
     RGBController/RGBControllerKeyNames.cpp                                                     \
     RGBController/RGBController_Network.cpp                                                     \
+    ui/DeviceListModel.cpp                                                                      \
 
 RESOURCES +=                                                                                    \
     qt/resources.qrc                                                                            \
+    ui/ui.qrc                                                                                   \
 
 #-----------------------------------------------------------------------------------------------#
 # General configuration to decide if in-tree dependencies are used or not

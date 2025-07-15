@@ -13,8 +13,12 @@
 #include "startup.h"
 
 #include <QApplication>
+#include <QQmlApplicationEngine>
+#include <QQmlContext>
+#include <QUrl>
 
 #include "OpenRGBDialog.h"
+#include "DeviceListModel.h"
 
 #ifdef __APPLE__
 #include "macutils.h"
@@ -70,6 +74,19 @@ int startup(int argc, char* argv[], unsigned int ret_flags)
         \*-------------------------------------------------*/
         OpenRGBDialog dlg;
         LOG_TRACE("[startup] Dialog created");
+
+        /*-------------------------------------------------*\
+        | Create QML Device List Window                     |
+        \*-------------------------------------------------*/
+        QQmlApplicationEngine qmlEngine;
+        DeviceListModel deviceModel;
+
+        // 将设备模型注册到 QML 上下文中
+        qmlEngine.rootContext()->setContextProperty("deviceModel", &deviceModel);
+
+        // 加载 QML 文件
+        qmlEngine.load(QUrl("qrc:/ui/DeviceList.qml"));
+        LOG_TRACE("[startup] QML Device List Window created");
 
         if(ret_flags & RET_FLAG_I2C_TOOLS)
         {
