@@ -37,7 +37,7 @@ RGBController_SkydimoSerial::RGBController_SkydimoSerial(SkydimoSerialController
     Direct.color_mode   = MODE_COLORS_PER_LED;
     modes.push_back(Direct);
 
-    // 创建流控制模式（带保活机制）
+    // 创建流式模式（带保活机制）
     mode Stream;
     Stream.name         = "Stream";
     Stream.value        = 1;
@@ -129,18 +129,17 @@ void RGBController_SkydimoSerial::UpdateSingleLED(int /*led*/)
 
 /**
  * @brief 更新设备模式
- * @details 根据选择的模式启动或停止保活线程
+ * @details 根据模式选择启动或停止保活机制
  */
 void RGBController_SkydimoSerial::DeviceUpdateMode()
 {
-    if (active_mode == 0)  // Direct 模式
+    // active_mode 是基类 RGBController 的成员，记录当前激活模式的 value
+    if (active_mode == 1) // Stream 模式
     {
-        // 停止保活线程，Direct模式仅在需要时发送数据
-        controller->StopKeepAlive();
-    }
-    else if (active_mode == 1)  // Stream 模式
-    {
-        // 启动保活线程，持续发送颜色数据
         controller->StartKeepAlive();
+    }
+    else // Direct 模式或其他
+    {
+        controller->StopKeepAlive();
     }
 }

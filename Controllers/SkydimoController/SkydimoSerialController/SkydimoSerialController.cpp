@@ -79,7 +79,7 @@ bool SkydimoSerialController::Initialize(const std::string& portname)
     // 成功打开后尝试读取设备信息（如失败也不影响后续使用）
     GetDeviceInfo();
 
-    // 保活线程将由上层RGBController根据模式控制
+    // 不再自动启动保活线程，由上层模式控制决定
     return true;
 }
 
