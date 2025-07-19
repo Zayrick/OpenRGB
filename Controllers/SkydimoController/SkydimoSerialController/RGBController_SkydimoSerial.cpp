@@ -12,15 +12,14 @@
 #include "RGBController_SkydimoSerial.h"
 
 /**
- * @brief 构造函数
- * @param controller_ptr 硬件控制器指针
- * @details 初始化控制器信息和模式
+ * @brief Constructor.
+ * @param controller_ptr A unique_ptr to the hardware controller.
+ * @details Initializes controller information and modes.
  */
-RGBController_SkydimoSerial::RGBController_SkydimoSerial(SkydimoSerialController* controller_ptr)
+RGBController_SkydimoSerial::RGBController_SkydimoSerial(std::unique_ptr<SkydimoSerialController> controller_ptr)
+    : controller(std::move(controller_ptr))
 {
-    controller          = controller_ptr;
-
-    // 设置设备信息
+    // Set device information from the hardware controller
     name                = controller->GetDeviceName();
     vendor              = "Skydimo";
     type                = DEVICE_TYPE_LEDSTRIP;
@@ -29,7 +28,7 @@ RGBController_SkydimoSerial::RGBController_SkydimoSerial(SkydimoSerialController
     serial              = controller->GetSerial();
     location            = controller->GetLocation();
 
-    // 创建直接控制模式
+    // Create Direct control mode
     mode Direct;
     Direct.name         = "Direct";
     Direct.value        = 0;
@@ -37,7 +36,7 @@ RGBController_SkydimoSerial::RGBController_SkydimoSerial(SkydimoSerialController
     Direct.color_mode   = MODE_COLORS_PER_LED;
     modes.push_back(Direct);
 
-    // 创建关闭模式
+    // Create Off mode
     mode Off;
     Off.name            = "Off";
     Off.value           = 1;
@@ -45,33 +44,32 @@ RGBController_SkydimoSerial::RGBController_SkydimoSerial(SkydimoSerialController
     Off.color_mode      = MODE_COLORS_NONE;
     modes.push_back(Off);
 
-
-    // 创建流式模式（带保活机制）
+    // Create Stream mode (with keep-alive)
     mode Stream;
     Stream.name         = "Stream";
     Stream.value        = 2;
     Stream.flags        = MODE_FLAG_HAS_PER_LED_COLOR;
     Stream.color_mode   = MODE_COLORS_PER_LED;
     modes.push_back(Stream);
+
     SetupZones();
 }
 
 /**
- * @brief 析构函数
- * @details 清理硬件控制器
+ * @brief Destructor.
+ * @details The unique_ptr will automatically handle hardware controller cleanup.
  */
 RGBController_SkydimoSerial::~RGBController_SkydimoSerial()
 {
-    delete controller;
 }
 
 /**
- * @brief 设置区域
- * @details 创建一个包含100个LED的灯带区域
+ * @brief Sets up the device zones.
+ * @details Creates a single zone representing the LED strip with 100 LEDs.
  */
 void RGBController_SkydimoSerial::SetupZones()
 {
-    // 创建LED灯带区域
+    // Create the LED strip zone
     zone strip_zone;
     strip_zone.name         = "LED Strip";
     strip_zone.type         = ZONE_TYPE_LINEAR;
@@ -81,7 +79,7 @@ void RGBController_SkydimoSerial::SetupZones()
     strip_zone.matrix_map   = nullptr;
     zones.push_back(strip_zone);
 
-    // 为每个LED创建LED对象
+    // Create LED objects for each LED
     for(int i = 0; i < controller->GetLEDCount(); i++)
     {
         led new_led;
@@ -93,22 +91,19 @@ void RGBController_SkydimoSerial::SetupZones()
 }
 
 /**
- * @brief 调整区域大小
- * @param zone 区域索引
- * @param new_size 新的大小
- * @note 此设备不支持调整区域大小，保持100个LED固定
+ * @brief Resizes a zone.
+ * @param zone The index of the zone.
+ * @param new_size The new size for the zone.
+ * @note This device does not support resizing; the LED count is fixed at 100.
  */
 void RGBController_SkydimoSerial::ResizeZone(int /*zone*/, int /*new_size*/)
 {
-    /*---------------------------------------------------------*\
-    | 此设备不支持调整区域大小                                    |
-    | LED数量固定为100个                                          |
-    \*---------------------------------------------------------*/
+    // This device does not support zone resizing.
 }
 
 /**
- * @brief 更新设备所有LED
- * @details 将颜色数组发送到硬件
+ * @brief Updates all LEDs on the device.
+ * @details Sends the color array to the hardware.
  */
 void RGBController_SkydimoSerial::DeviceUpdateLEDs()
 {
@@ -116,9 +111,9 @@ void RGBController_SkydimoSerial::DeviceUpdateLEDs()
 }
 
 /**
- * @brief 更新指定区域的LED
- * @param zone 区域索引
- * @details 由于只有一个区域，直接更新所有LED
+ * @brief Updates the LEDs for a specific zone.
+ * @param zone The index of the zone to update.
+ * @details Since there is only one zone, this updates all LEDs.
  */
 void RGBController_SkydimoSerial::UpdateZoneLEDs(int /*zone*/)
 {
@@ -126,9 +121,9 @@ void RGBController_SkydimoSerial::UpdateZoneLEDs(int /*zone*/)
 }
 
 /**
- * @brief 更新单个LED
- * @param led LED索引
- * @note 此设备必须一次更新所有LED，因此调用DeviceUpdateLEDs
+ * @brief Updates a single LED.
+ * @param led The index of the LED to update.
+ * @note This device requires a full update, so it calls DeviceUpdateLEDs.
  */
 void RGBController_SkydimoSerial::UpdateSingleLED(int /*led*/)
 {
@@ -136,24 +131,24 @@ void RGBController_SkydimoSerial::UpdateSingleLED(int /*led*/)
 }
 
 /**
- * @brief 更新设备模式
- * @details 根据模式选择启动或停止保活机制，Off模式关闭所有LED
+ * @brief Updates the device mode.
+ * @details Starts or stops the keep-alive mechanism and turns off LEDs for the Off mode.
  */
 void RGBController_SkydimoSerial::DeviceUpdateMode()
 {
-    // active_mode 是基类 RGBController 的成员，记录当前激活模式的 value
-    if (active_mode == 1) // Off 模式
+    // active_mode is a member of the base RGBController class.
+    if (active_mode == 1) // Off mode
     {
         controller->StopKeepAlive();
-        // 创建全黑颜色数组关闭所有LED
+        // Create an all-black color array to turn off LEDs.
         std::vector<RGBColor> black_colors(controller->GetLEDCount(), ToRGBColor(0, 0, 0));
         controller->SetLEDs(black_colors);
     }
-    else if (active_mode == 2) // Stream 模式
+    else if (active_mode == 2) // Stream mode
     {
         controller->StartKeepAlive();
     }
-    else // Direct 模式 (active_mode == 0)
+    else // Direct mode (active_mode == 0)
     {
         controller->StopKeepAlive();
     }

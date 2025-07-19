@@ -1,12 +1,12 @@
 /*---------------------------------------------------------*\
-| SkydimoSerialController.h                                 |
-|                                                           |
-|   Driver for Skydimo Serial LED Strip                     |
-|                                                           |
-|   Skydimo                                      2024-12-28 |
-|                                                           |
-|   This file is part of the OpenRGB project                |
-|   SPDX-License-Identifier: GPL-2.0-only                   |
+| | SkydimoSerialController.h                                 |
+| |                                                           |
+| |   Driver for the Skydimo Serial LED Strip.                |
+| |                                                           |
+| |   Skydimo                                      2024-12-28 |
+| |                                                           |
+| |   This file is part of the OpenRGB project.               |
+| |   SPDX-License-Identifier: GPL-2.0-only                   |
 \*---------------------------------------------------------*/
 
 #pragma once
@@ -20,8 +20,9 @@
 #include <mutex>
 
 /**
- * @brief Skydimo串口LED控制器类
- * @details 通过串口协议控制LED灯带，支持100个灯珠
+ * @brief Controller class for the Skydimo Serial LED strip.
+ * @details This class handles communication with the LED strip over a serial port,
+ *          supporting up to 100 LEDs.
  */
 class SkydimoSerialController
 {
@@ -30,80 +31,81 @@ public:
     ~SkydimoSerialController();
 
     /**
-     * @brief 初始化串口设备
-     * @param portname 串口端口名称
-     * @return true 初始化成功, false 初始化失败
+     * @brief Initializes the controller and opens the serial port.
+     * @param portname The name of the serial port (e.g., "COM3" or "/dev/ttyUSB0").
+     * @return true on success, false on failure.
      */
     bool Initialize(const std::string& portname);
 
     /**
-     * @brief 获取设备名称
-     * @return 设备名称字符串
+     * @brief Gets the device name.
+     * @return A string containing the device name.
      */
     std::string GetDeviceName();
 
     /**
-     * @brief 获取设备序列号
-     * @return 设备序列号字符串
+     * @brief Gets the device serial number.
+     * @return A string containing the serial number.
      */
     std::string GetSerial();
 
     /**
-     * @brief 获取设备位置（串口路径）
-     * @return 设备位置字符串
+     * @brief Gets the device location (serial port path).
+     * @return A string containing the port name.
      */
     std::string GetLocation();
 
     /**
-     * @brief 设置LED颜色
-     * @param colors RGB颜色数组
+     * @brief Sets the colors for the LEDs.
+     * @param colors A vector of RGBColor structs.
      */
     void SetLEDs(const std::vector<RGBColor>& colors);
 
     /**
-     * @brief 启动保活线程，在后台周期性重发上次颜色
+     * @brief Starts a keep-alive thread to periodically resend the last colors.
      */
     void StartKeepAlive();
 
     /**
-     * @brief 停止保活线程
+     * @brief Stops the keep-alive thread.
      */
     void StopKeepAlive();
 
     /**
-     * @brief 获取LED数量
-     * @return LED数量
+     * @brief Gets the number of LEDs supported by the device.
+     * @return The number of LEDs.
      */
     int GetLEDCount() { return num_leds; }
 
 private:
-    serial_port*    serialport;         ///< 串口对象指针
-    std::string     port_name;          ///< 串口名称
-    std::string     device_name;        ///< 设备名称
-    std::string     device_serial;      ///< 设备序列号
-    int             num_leds;           ///< LED数量
+    serial_port*    serialport;         ///< Pointer to the serial port object
+    std::string     port_name;          ///< Name of the serial port
+    std::string     device_name;        ///< Name of the device
+    std::string     device_serial;      ///< Serial number of the device
+    int             num_leds;           ///< Number of LEDs
 
     /*-----------------------------------------------------*\
-    | 保活机制相关成员                                      |
+    | Members for the keep-alive mechanism                  |
     \*-----------------------------------------------------*/
-    std::thread              keep_alive_thread;   ///< 保活线程
-    std::atomic<bool>        keep_alive_running;  ///< 线程运行标志
-    std::mutex               write_mutex;         ///< 串口写互斥
-    std::vector<RGBColor>    last_colors;         ///< 最近一次发送的颜色
+    std::thread              keep_alive_thread;   ///< Keep-alive thread
+    std::atomic<bool>        keep_alive_running;  ///< Flag to control the thread loop
+    std::mutex               write_mutex;         ///< Mutex for serial port writes
+    std::vector<RGBColor>    last_colors;         ///< The last set of colors sent
 
     /**
-     * @brief 底层发送颜色数据，不修改 last_colors，调用方需要保证加锁
+     * @brief Low-level function to send color data. Does not modify last_colors
+     *        and assumes the caller holds the lock.
      */
     void SendColors(const std::vector<RGBColor>& colors);
 
     /**
-     * @brief 保活线程循环函数
+     * @brief The main loop for the keep-alive thread.
      */
     void KeepAliveLoop();
 
     /**
-     * @brief 获取设备信息
-     * @return true 获取成功, false 获取失败
+     * @brief Retrieves device information (name, serial, etc.).
+     * @return true on success, false on failure.
      */
     bool GetDeviceInfo();
 };

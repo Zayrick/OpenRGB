@@ -27,8 +27,8 @@
 #endif
 
 /**
- * @brief 构造函数
- * @details 初始化成员变量
+ * @brief Constructor.
+ * @details Initializes member variables.
  */
 SkydimoSerialController::SkydimoSerialController()
 {
@@ -36,13 +36,13 @@ SkydimoSerialController::SkydimoSerialController()
     port_name       = "";
     device_name     = "Skydimo LED Strip";
     device_serial   = "000000";
-    num_leds        = 100;  // 默认100个灯珠
+    num_leds        = 100;  // Default to 100 LEDs
     keep_alive_running = false;
 }
 
 /**
- * @brief 析构函数
- * @details 清理串口资源
+ * @brief Destructor.
+ * @details Cleans up serial port resources.
  */
 SkydimoSerialController::~SkydimoSerialController()
 {
@@ -55,20 +55,18 @@ SkydimoSerialController::~SkydimoSerialController()
 }
 
 /**
- * @brief 初始化串口设备
- * @param portname 串口端口名称
- * @return true 初始化成功, false 初始化失败
+ * @brief Initializes the serial device.
+ * @param portname The name of the serial port.
+ * @return true on success, false on failure.
  */
 bool SkydimoSerialController::Initialize(const std::string& portname)
 {
     port_name = portname;
 
-    /*-----------------------------------------------------*\
-    | 仅打开一次串口，避免重复打开导致端口被占用                     |
-    \*-----------------------------------------------------*/
+    // Open the serial port only once to avoid conflicts.
     serialport = new serial_port();
 
-    // 设置并打开串口，115200-8-N-1，无流控
+    // Set up and open the serial port: 115200-8-N-1, no flow control.
     if(!serialport->serial_open(port_name.c_str(), 115200))
     {
         delete serialport;
@@ -76,16 +74,18 @@ bool SkydimoSerialController::Initialize(const std::string& portname)
         return false;
     }
 
-    // 成功打开后尝试读取设备信息（如失败也不影响后续使用）
+    // Try to retrieve device info after successful open.
+    // Failure to do so does not prevent subsequent operations.
     GetDeviceInfo();
 
-    // 不再自动启动保活线程，由上层模式控制决定
+    // The keep-alive thread is no longer started automatically;
+    // it's controlled by the selected mode in the RGB controller.
     return true;
 }
 
 /**
- * @brief 获取设备名称
- * @return 设备名称字符串
+ * @brief Gets the device name.
+ * @return A string containing the device name.
  */
 std::string SkydimoSerialController::GetDeviceName()
 {
@@ -93,8 +93,8 @@ std::string SkydimoSerialController::GetDeviceName()
 }
 
 /**
- * @brief 获取设备序列号
- * @return 设备序列号字符串
+ * @brief Gets the device serial number.
+ * @return A string containing the serial number.
  */
 std::string SkydimoSerialController::GetSerial()
 {
@@ -102,8 +102,8 @@ std::string SkydimoSerialController::GetSerial()
 }
 
 /**
- * @brief 获取设备位置
- * @return 串口路径
+ * @brief Gets the device location (serial port).
+ * @return A string containing the serial port path.
  */
 std::string SkydimoSerialController::GetLocation()
 {
@@ -111,9 +111,9 @@ std::string SkydimoSerialController::GetLocation()
 }
 
 /**
- * @brief 设置LED颜色
- * @param colors RGB颜色数组
- * @details 使用与原代码相同的协议格式
+ * @brief Sets the colors of the LEDs.
+ * @param colors A vector of RGBColor structs.
+ * @details Uses the same protocol format as the original implementation.
  */
 void SkydimoSerialController::SetLEDs(const std::vector<RGBColor>& colors)
 {
@@ -124,7 +124,7 @@ void SkydimoSerialController::SetLEDs(const std::vector<RGBColor>& colors)
 
     {
         std::lock_guard<std::mutex> lk(write_mutex);
-        last_colors = colors; // 保存最后一次颜色
+        last_colors = colors; // Save the last set colors
         SendColors(colors);
     }
 }
@@ -185,7 +185,7 @@ void SkydimoSerialController::StopKeepAlive()
 void SkydimoSerialController::KeepAliveLoop()
 {
     using namespace std::chrono_literals;
-    const auto interval = 250ms; // 250ms 周期保活
+    const auto interval = 250ms; // 250ms keep-alive interval
 
     while (keep_alive_running)
     {
@@ -201,9 +201,9 @@ void SkydimoSerialController::KeepAliveLoop()
 }
 
 /**
- * @brief 获取设备信息
- * @return true 获取成功, false 获取失败
- * @details 发送Moni-A命令获取设备型号和序列号
+ * @brief Retrieves device information.
+ * @return true on success, false on failure.
+ * @details Sends the "Moni-A" command to get the device model and serial.
  */
 bool SkydimoSerialController::GetDeviceInfo()
 {
@@ -212,40 +212,40 @@ bool SkydimoSerialController::GetDeviceInfo()
         return false;
     }
 
-    // 发送查询命令
+    // Send query command
     const char* cmd = "Moni-A";
-    // 将 size_t 显式转换为 int，避免 VS 在 64 位环境下产生 C4267 警告
+    // Explicitly cast size_t to int to avoid C4267 warning in VS on 64-bit
     int cmd_len = static_cast<int>(strlen(cmd));
     serialport->serial_write((char*)cmd, cmd_len);
 
-    // 等待响应
+    // Wait for response
     #ifdef _WIN32
     Sleep(10);
     #else
     usleep(10000);
     #endif
 
-    // 读取响应
+    // Read response
     char buf[64] = {0};
-    // sizeof 返回 size_t，需要显式转换为 int
+    // sizeof returns size_t, needs explicit cast to int
     int bytes_read = serialport->serial_read(buf, static_cast<int>(sizeof(buf)));
 
     if(bytes_read > 0)
     {
-        // 解析响应格式: "型号,序列号\r\n"
+        // Parse response format: "Model,Serial\r\n"
         std::string response(buf, bytes_read);
         size_t comma_pos = response.find(',');
 
         if(comma_pos != std::string::npos)
         {
-            // 提取型号
+            // Extract model
             std::string model = response.substr(0, comma_pos);
             if(!model.empty())
             {
                 device_name = "Skydimo " + model;
             }
 
-            // 提取序列号
+            // Extract serial number
             size_t end_pos = response.find_first_of("\r\n", comma_pos);
             if(end_pos == std::string::npos)
             {
@@ -254,7 +254,8 @@ bool SkydimoSerialController::GetDeviceInfo()
 
             if(end_pos > comma_pos + 1)
             {
-                // 将原始字节序列转换为十六进制字符串，确保非 ASCII 字符不会导致乱码
+                // Convert raw byte sequence to hex string to prevent issues
+                // with non-ASCII characters.
                 std::string serial_raw = response.substr(comma_pos + 1, end_pos - comma_pos - 1);
                 std::ostringstream oss;
                 oss << std::uppercase << std::hex << std::setfill('0');

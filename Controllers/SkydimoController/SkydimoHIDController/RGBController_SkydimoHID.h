@@ -1,11 +1,11 @@
 /*---------------------------------------------------------*\
 | RGBController_SkydimoHID.h                                |
 |                                                           |
-|   RGBController for Skydimo HID LED Strip                 |
+|   RGBController for the Skydimo HID LED Strip.            |
 |                                                           |
 |   Skydimo                                      2024-12-28 |
 |                                                           |
-|   This file is part of the OpenRGB project                |
+|   This file is part of the OpenRGB project.               |
 |   SPDX-License-Identifier: GPL-2.0-only                   |
 \*---------------------------------------------------------*/
 
@@ -13,56 +13,59 @@
 
 #include "RGBController.h"
 #include "SkydimoHIDController.h"
+#include <memory>
 
 /**
- * @brief OpenRGB控制器类，用于Skydimo HID LED灯带
- * @details 继承自RGBController，实现OpenRGB接口
+ * @brief OpenRGB controller class for the Skydimo HID LED strip.
+ * @details This class inherits from RGBController and implements the
+ *          OpenRGB interface for the device.
  */
 class RGBController_SkydimoHID : public RGBController
 {
 public:
-    RGBController_SkydimoHID(SkydimoHIDController* controller_ptr);
+    explicit RGBController_SkydimoHID(std::unique_ptr<SkydimoHIDController> controller_ptr);
     ~RGBController_SkydimoHID();
 
     /**
-     * @brief 设置区域
-     * @details 创建一个包含可变数量LED的灯带区域
+     * @brief Sets up the device zones.
+     * @details Creates a single zone representing the LED strip with a variable
+     *          number of LEDs.
      */
     void SetupZones();
 
     /**
-     * @brief 调整区域大小
-     * @param zone 区域索引
-     * @param new_size 新的大小
-     * @note 此设备支持调整LED数量
+     * @brief Resizes a zone (the number of LEDs).
+     * @param zone The index of the zone to resize (always 0).
+     * @param new_size The new number of LEDs.
+     * @note This device supports resizing the LED count.
      */
     void ResizeZone(int zone, int new_size);
 
     /**
-     * @brief 更新设备所有LED
-     * @details 将所有LED颜色发送到设备
+     * @brief Updates all LEDs on the device.
+     * @details Sends the colors of all LEDs to the device.
      */
     void DeviceUpdateLEDs();
 
     /**
-     * @brief 更新指定区域的LED
-     * @param zone 区域索引
+     * @brief Updates the LEDs for a specific zone.
+     * @param zone The index of the zone to update.
      */
     void UpdateZoneLEDs(int zone);
 
     /**
-     * @brief 更新单个LED
-     * @param led LED索引
-     * @note 此设备必须更新所有LED
+     * @brief Updates a single LED.
+     * @param led The index of the LED to update.
+     * @note This device requires a full update for all LEDs.
      */
     void UpdateSingleLED(int led);
 
     /**
-     * @brief 更新设备模式
-     * @details 此设备仅支持直接控制模式
+     * @brief Updates the device mode.
+     * @details This device only supports the "Direct" control mode.
      */
     void DeviceUpdateMode();
 
 private:
-    SkydimoHIDController* controller;    ///< 硬件控制器指针
+    std::unique_ptr<SkydimoHIDController> controller;    ///< Pointer to the hardware controller
 };

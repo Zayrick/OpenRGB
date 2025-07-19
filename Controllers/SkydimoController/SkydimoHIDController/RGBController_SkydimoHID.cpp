@@ -12,15 +12,14 @@
 #include "RGBController_SkydimoHID.h"
 
 /**
- * @brief 构造函数
- * @param controller_ptr 硬件控制器指针
- * @details 初始化控制器信息和模式
+ * @brief Constructor.
+ * @param controller_ptr A unique_ptr to the hardware controller.
+ * @details Initializes controller information and modes.
  */
-RGBController_SkydimoHID::RGBController_SkydimoHID(SkydimoHIDController* controller_ptr)
+RGBController_SkydimoHID::RGBController_SkydimoHID(std::unique_ptr<SkydimoHIDController> controller_ptr)
+    : controller(std::move(controller_ptr))
 {
-    controller          = controller_ptr;
-
-    // 设置设备信息
+    // Set device information from the hardware controller
     name                = controller->GetDeviceName();
     vendor              = "Skydimo";
     type                = DEVICE_TYPE_LEDSTRIP;
@@ -29,7 +28,7 @@ RGBController_SkydimoHID::RGBController_SkydimoHID(SkydimoHIDController* control
     serial              = controller->GetSerial();
     location            = controller->GetLocation();
 
-    // 创建直接控制模式
+    // Create Direct control mode
     mode Direct;
     Direct.name         = "Direct";
     Direct.value        = 0;
@@ -37,7 +36,7 @@ RGBController_SkydimoHID::RGBController_SkydimoHID(SkydimoHIDController* control
     Direct.color_mode   = MODE_COLORS_PER_LED;
     modes.push_back(Direct);
 
-    // 创建关闭模式
+    // Create Off mode
     mode Off;
     Off.name            = "Off";
     Off.value           = 1;
@@ -49,35 +48,35 @@ RGBController_SkydimoHID::RGBController_SkydimoHID(SkydimoHIDController* control
 }
 
 /**
- * @brief 析构函数
- * @details 清理硬件控制器
+ * @brief Destructor.
+ * @details The unique_ptr will automatically handle hardware controller cleanup.
  */
 RGBController_SkydimoHID::~RGBController_SkydimoHID()
 {
-    delete controller;
 }
 
 /**
- * @brief 设置区域
- * @details 创建一个包含可变数量LED的灯带区域
+ * @brief Sets up the device zones.
+ * @details Creates a single zone representing the LED strip with a variable
+ *          number of LEDs.
  */
 void RGBController_SkydimoHID::SetupZones()
 {
-    // 清除现有区域和LED
+    // Clear existing zones and LEDs
     zones.clear();
     leds.clear();
 
-    // 创建LED灯带区域
+    // Create the LED strip zone
     zone strip_zone;
     strip_zone.name         = "LED Strip";
     strip_zone.type         = ZONE_TYPE_LINEAR;
-    strip_zone.leds_min     = 1;                               // 最小1个LED
-    strip_zone.leds_max     = controller->GetMaxLEDCount();    // 最大支持LED数量
-    strip_zone.leds_count   = controller->GetMaxLEDCount();    // 默认使用最大LED数量
+    strip_zone.leds_min     = 1;
+    strip_zone.leds_max     = controller->GetMaxLEDCount();
+    strip_zone.leds_count   = controller->GetMaxLEDCount(); // Default to max LEDs
     strip_zone.matrix_map   = nullptr;
     zones.push_back(strip_zone);
 
-    // 为每个LED创建LED对象
+    // Create LED objects for each LED
     for(int i = 0; i < strip_zone.leds_count; i++)
     {
         led new_led;
@@ -89,10 +88,10 @@ void RGBController_SkydimoHID::SetupZones()
 }
 
 /**
- * @brief 调整区域大小
- * @param zone 区域索引
- * @param new_size 新的大小
- * @details 支持动态调整LED数量
+ * @brief Resizes a zone (the number of LEDs).
+ * @param zone The index of the zone to resize (always 0).
+ * @param new_size The new number of LEDs.
+ * @details This device supports resizing the LED count.
  */
 void RGBController_SkydimoHID::ResizeZone(int zone, int new_size)
 {
@@ -108,7 +107,7 @@ void RGBController_SkydimoHID::ResizeZone(int zone, int new_size)
 
     zones[zone].leds_count = new_size;
 
-    // 重新设置LED列表
+    // Re-create the LED list
     leds.clear();
     for(int i = 0; i < new_size; i++)
     {
@@ -121,8 +120,8 @@ void RGBController_SkydimoHID::ResizeZone(int zone, int new_size)
 }
 
 /**
- * @brief 更新设备所有LED
- * @details 将颜色数组发送到硬件
+ * @brief Updates all LEDs on the device.
+ * @details Sends the color array to the hardware.
  */
 void RGBController_SkydimoHID::DeviceUpdateLEDs()
 {
@@ -133,9 +132,9 @@ void RGBController_SkydimoHID::DeviceUpdateLEDs()
 }
 
 /**
- * @brief 更新指定区域的LED
- * @param zone 区域索引
- * @details 由于只有一个区域，直接更新所有LED
+ * @brief Updates the LEDs for a specific zone.
+ * @param zone The index of the zone to update.
+ * @details Since there's only one zone, this just updates all LEDs.
  */
 void RGBController_SkydimoHID::UpdateZoneLEDs(int /*zone*/)
 {
@@ -143,9 +142,9 @@ void RGBController_SkydimoHID::UpdateZoneLEDs(int /*zone*/)
 }
 
 /**
- * @brief 更新单个LED
- * @param led LED索引
- * @note 此设备必须一次更新所有LED，因此调用DeviceUpdateLEDs
+ * @brief Updates a single LED.
+ * @param led The index of the LED to update.
+ * @note This device requires a full update, so it calls DeviceUpdateLEDs.
  */
 void RGBController_SkydimoHID::UpdateSingleLED(int /*led*/)
 {
@@ -153,20 +152,20 @@ void RGBController_SkydimoHID::UpdateSingleLED(int /*led*/)
 }
 
 /**
- * @brief 更新设备模式
- * @details 根据模式处理：Off模式关闭所有LED，Direct模式无需特殊处理
+ * @brief Updates the device mode.
+ * @details Handles mode changes: turns LEDs off for "Off" mode.
  */
 void RGBController_SkydimoHID::DeviceUpdateMode()
 {
-    // active_mode 是基类 RGBController 的成员，记录当前激活模式的 value
-    if (active_mode == 1) // Off 模式
+    // active_mode is a member of the base RGBController class.
+    if (active_mode == 1) // Off mode
     {
-        // 创建全黑颜色数组关闭所有LED
+        // Create an all-black color array to turn off LEDs.
         if (!zones.empty())
         {
             std::vector<RGBColor> black_colors(zones[0].leds_count, ToRGBColor(0, 0, 0));
             controller->SetLEDs(black_colors, zones[0].leds_count);
         }
     }
-    // Direct 模式 (active_mode == 0) 无需特殊处理
+    // "Direct" mode (active_mode == 0) requires no special handling here.
 }

@@ -20,8 +20,8 @@
 #include <sstream>
 
 /**
- * @brief 构造函数
- * @details 初始化成员变量
+ * @brief Constructor.
+ * @details Initializes member variables.
  */
 SkydimoHIDController::SkydimoHIDController()
 {
@@ -35,8 +35,8 @@ SkydimoHIDController::SkydimoHIDController()
 }
 
 /**
- * @brief 析构函数
- * @details 清理HID设备资源
+ * @brief Destructor.
+ * @details Cleans up HID device resources.
  */
 SkydimoHIDController::~SkydimoHIDController()
 {
@@ -44,11 +44,11 @@ SkydimoHIDController::~SkydimoHIDController()
 }
 
 /**
- * @brief 打开HID设备
- * @param path HID设备路径
- * @return true 打开成功, false 打开失败
+ * @brief Initializes the controller and opens the HID device.
+ * @param path The system path of the HID device.
+ * @return true on success, false on failure.
  */
-bool SkydimoHIDController::OpenDevice(const std::string& path)
+bool SkydimoHIDController::Initialize(const std::string& path)
 {
     device_path = path;
 
@@ -58,13 +58,13 @@ bool SkydimoHIDController::OpenDevice(const std::string& path)
         return false;
     }
 
-    // 获取设备信息
+    // Fetch device information
     wchar_t wstr[256];
 
-    // 获取产品名称
+    // Get product name
     if (hid_get_product_string(device, wstr, sizeof(wstr) / sizeof(wstr[0])) == 0)
     {
-        // 将宽字符转换为多字节字符串
+        // Convert wide string to multibyte string
         char product_name[256];
         wcstombs(product_name, wstr, sizeof(product_name));
         if (strlen(product_name) > 0)
@@ -73,10 +73,10 @@ bool SkydimoHIDController::OpenDevice(const std::string& path)
         }
     }
 
-    // 获取序列号
+    // Get serial number
     if (hid_get_serial_number_string(device, wstr, sizeof(wstr) / sizeof(wstr[0])) == 0)
     {
-        // 将宽字符序列号转换为十六进制字符串
+        // Convert wide char serial to hex string
         std::ostringstream oss;
         oss << std::uppercase << std::hex << std::setfill('0');
         for (int i = 0; wstr[i] != 0 && i < 16; i++)
@@ -95,7 +95,7 @@ bool SkydimoHIDController::OpenDevice(const std::string& path)
 }
 
 /**
- * @brief 关闭HID设备
+ * @brief Closes the HID device.
  */
 void SkydimoHIDController::CloseDevice()
 {
@@ -107,10 +107,10 @@ void SkydimoHIDController::CloseDevice()
 }
 
 /**
- * @brief 设置LED颜色
- * @param colors RGB颜色数组
- * @param count LED数量
- * @return true 设置成功, false 设置失败
+ * @brief Sets the colors for the LEDs.
+ * @param colors A vector of RGBColor structs.
+ * @param count The number of LEDs to update.
+ * @return true on success, false on failure.
  */
 bool SkydimoHIDController::SetLEDs(const std::vector<RGBColor>& colors, int count)
 {
@@ -119,15 +119,15 @@ bool SkydimoHIDController::SetLEDs(const std::vector<RGBColor>& colors, int coun
         return false;
     }
 
-    // 限制LED数量在合理范围内
+    // Clamp LED count to a reasonable range
     int led_count = std::min(count, std::min(static_cast<int>(colors.size()), max_leds));
 
-    // 分批发送LED数据
+    // Send LED data in batches
     for (int idx = 0; idx < led_count; idx += BATCH_LEDS)
     {
         int current_batch_size = std::min(BATCH_LEDS, led_count - idx);
 
-        // 准备RGB数据（使用GRB顺序）
+        // Prepare RGB data (in GRB order)
         std::array<uint8_t, MAX_RGB_BYTES> rgb_data_bytes{};
         for (int i = 0; i < current_batch_size; ++i)
         {
@@ -136,28 +136,28 @@ bool SkydimoHIDController::SetLEDs(const std::vector<RGBColor>& colors, int coun
             uint8_t g = RGBGetGValue(color);
             uint8_t b = RGBGetBValue(color);
 
-            // 设备使用GRB顺序
+            // Device uses GRB order
             rgb_data_bytes[i * 3]     = g;
             rgb_data_bytes[i * 3 + 1] = r;
             rgb_data_bytes[i * 3 + 2] = b;
         }
 
-        // 发送当前批次的RGB数据
+        // Send the current batch of RGB data
         if (!SendRGBData(rgb_data_bytes.data(), idx))
         {
             return false;
         }
     }
 
-    // 发送结束命令
+    // Send the end command
     return SendEndCommand(led_count);
 }
 
 /**
- * @brief 计算CRC8校验值（MAXIM多项式）
- * @param data 数据缓冲区
- * @param size 数据大小
- * @return CRC8校验值
+ * @brief Calculates the CRC8 checksum (MAXIM polynomial).
+ * @param data Pointer to the data buffer.
+ * @param size Size of the data.
+ * @return The calculated CRC8 checksum.
  */
 uint8_t SkydimoHIDController::CalculateCRC8(const uint8_t* data, uint8_t size) const
 {
@@ -184,56 +184,56 @@ uint8_t SkydimoHIDController::CalculateCRC8(const uint8_t* data, uint8_t size) c
 }
 
 /**
- * @brief 发送RGB数据到设备
- * @param rgb_data RGB数据缓冲区
- * @param offset LED偏移量
- * @return true 发送成功, false 发送失败
+ * @brief Sends RGB data to the device.
+ * @param rgb_data Pointer to the buffer of RGB data.
+ * @param offset The starting offset of the LEDs.
+ * @return true on success, false on failure.
  */
 bool SkydimoHIDController::SendRGBData(const uint8_t* rgb_data, int offset)
 {
     std::vector<uint8_t> payload;
-    payload.reserve(MAX_RGB_BYTES + 4); // 预留足够空间
+    payload.reserve(MAX_RGB_BYTES + 4); // Reserve enough space
 
-    // 构建数据包：命令字节 + 偏移量（小端序）+ RGB数据
+    // Build the packet: command byte + offset (little-endian) + RGB data
     payload.push_back(0x01);
     payload.push_back(static_cast<uint8_t>(offset & 0xFF));
     payload.push_back(static_cast<uint8_t>((offset >> 8) & 0xFF));
 
-    // 添加RGB数据
+    // Add RGB data
     payload.insert(payload.end(), rgb_data, rgb_data + MAX_RGB_BYTES);
 
-    // 添加CRC8校验
+    // Append CRC8 checksum
     payload.push_back(CalculateCRC8(payload.data(), static_cast<uint8_t>(payload.size())));
 
-    // 发送数据包
+    // Send the packet
     int result = hid_write(device, payload.data(), static_cast<int>(payload.size()));
     return result >= 0;
 }
 
 /**
- * @brief 发送结束命令
- * @param total_leds 总LED数量
- * @return true 发送成功, false 发送失败
+ * @brief Sends the end command to finalize the color update.
+ * @param total_leds The total number of LEDs being updated.
+ * @return true on success, false on failure.
  */
 bool SkydimoHIDController::SendEndCommand(int total_leds)
 {
     std::vector<uint8_t> end_payload;
     end_payload.reserve(MAX_RGB_BYTES + 1);
 
-    // 构建结束命令：命令字节 + 结束标记 + LED数量（小端序）
+    // Build the end command: command byte + end marker + LED count (little-endian)
     end_payload.push_back(0x01);
     end_payload.push_back(0xFF);
     end_payload.push_back(0xFF);
     end_payload.push_back(static_cast<uint8_t>(total_leds & 0xFF));
     end_payload.push_back(static_cast<uint8_t>((total_leds >> 8) & 0xFF));
 
-    // 填充到指定长度
+    // Pad to the required length
     end_payload.resize(MAX_RGB_BYTES, 0x00);
 
-    // 添加CRC8校验
+    // Append CRC8 checksum
     end_payload.push_back(CalculateCRC8(end_payload.data(), MAX_RGB_BYTES));
 
-    // 发送结束命令
+    // Send the end command
     int result = hid_write(device, end_payload.data(), static_cast<int>(end_payload.size()));
     return result >= 0;
 }
