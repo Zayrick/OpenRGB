@@ -23,7 +23,7 @@ RGBController_SkydimoHID::RGBController_SkydimoHID(std::unique_ptr<SkydimoHIDCon
     name                = controller->GetDeviceName();
     vendor              = "Skydimo";
     type                = DEVICE_TYPE_LEDSTRIP;
-    description         = "Skydimo HID LED Strip Controller";
+    description         = "Skydimo HID Device";
     version             = "1.0";
     serial              = controller->GetSerial();
     location            = controller->GetLocation();

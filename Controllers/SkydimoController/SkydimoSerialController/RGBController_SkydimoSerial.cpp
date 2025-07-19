@@ -23,7 +23,7 @@ RGBController_SkydimoSerial::RGBController_SkydimoSerial(std::unique_ptr<Skydimo
     name                = controller->GetDeviceName();
     vendor              = "Skydimo";
     type                = DEVICE_TYPE_LEDSTRIP;
-    description         = "Skydimo Serial LED Strip Controller";
+    description         = "Skydimo Serial Device";
     version             = "1.0";
     serial              = controller->GetSerial();
     location            = controller->GetLocation();
