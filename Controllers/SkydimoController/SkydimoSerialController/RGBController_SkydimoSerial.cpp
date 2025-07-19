@@ -37,14 +37,22 @@ RGBController_SkydimoSerial::RGBController_SkydimoSerial(SkydimoSerialController
     Direct.color_mode   = MODE_COLORS_PER_LED;
     modes.push_back(Direct);
 
+    // 创建关闭模式
+    mode Off;
+    Off.name            = "Off";
+    Off.value           = 1;
+    Off.flags           = 0;
+    Off.color_mode      = MODE_COLORS_NONE;
+    modes.push_back(Off);
+
+
     // 创建流式模式（带保活机制）
     mode Stream;
     Stream.name         = "Stream";
-    Stream.value        = 1;
+    Stream.value        = 2;
     Stream.flags        = MODE_FLAG_HAS_PER_LED_COLOR;
     Stream.color_mode   = MODE_COLORS_PER_LED;
     modes.push_back(Stream);
-
     SetupZones();
 }
 
@@ -129,16 +137,23 @@ void RGBController_SkydimoSerial::UpdateSingleLED(int /*led*/)
 
 /**
  * @brief 更新设备模式
- * @details 根据模式选择启动或停止保活机制
+ * @details 根据模式选择启动或停止保活机制，Off模式关闭所有LED
  */
 void RGBController_SkydimoSerial::DeviceUpdateMode()
 {
     // active_mode 是基类 RGBController 的成员，记录当前激活模式的 value
-    if (active_mode == 1) // Stream 模式
+    if (active_mode == 1) // Off 模式
+    {
+        controller->StopKeepAlive();
+        // 创建全黑颜色数组关闭所有LED
+        std::vector<RGBColor> black_colors(controller->GetLEDCount(), ToRGBColor(0, 0, 0));
+        controller->SetLEDs(black_colors);
+    }
+    else if (active_mode == 2) // Stream 模式
     {
         controller->StartKeepAlive();
     }
-    else // Direct 模式或其他
+    else // Direct 模式 (active_mode == 0)
     {
         controller->StopKeepAlive();
     }

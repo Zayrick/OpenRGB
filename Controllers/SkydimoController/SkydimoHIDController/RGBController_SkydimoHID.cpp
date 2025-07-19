@@ -37,6 +37,14 @@ RGBController_SkydimoHID::RGBController_SkydimoHID(SkydimoHIDController* control
     Direct.color_mode   = MODE_COLORS_PER_LED;
     modes.push_back(Direct);
 
+    // 创建关闭模式
+    mode Off;
+    Off.name            = "Off";
+    Off.value           = 1;
+    Off.flags           = 0;
+    Off.color_mode      = MODE_COLORS_NONE;
+    modes.push_back(Off);
+
     SetupZones();
 }
 
@@ -146,9 +154,19 @@ void RGBController_SkydimoHID::UpdateSingleLED(int /*led*/)
 
 /**
  * @brief 更新设备模式
- * @details 此设备仅支持直接控制模式，无需特殊处理
+ * @details 根据模式处理：Off模式关闭所有LED，Direct模式无需特殊处理
  */
 void RGBController_SkydimoHID::DeviceUpdateMode()
 {
-    // 仅支持直接控制模式，无需更新
+    // active_mode 是基类 RGBController 的成员，记录当前激活模式的 value
+    if (active_mode == 1) // Off 模式
+    {
+        // 创建全黑颜色数组关闭所有LED
+        if (!zones.empty())
+        {
+            std::vector<RGBColor> black_colors(zones[0].leds_count, ToRGBColor(0, 0, 0));
+            controller->SetLEDs(black_colors, zones[0].leds_count);
+        }
+    }
+    // Direct 模式 (active_mode == 0) 无需特殊处理
 }
