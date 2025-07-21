@@ -182,10 +182,43 @@ ApplicationWindow {
 
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: "正在检测设备，请稍候..."
+                        text: deviceModel.progressText || "正在检测设备，请稍候..."
                         color: "#3498db"
                         font.pixelSize: 16
                         horizontalAlignment: Text.AlignHCenter
+                    }
+
+                    // 进度条
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: 300
+                        height: 20
+                        color: "#ecf0f1"
+                        radius: 10
+                        border.color: "#bdc3c7"
+                        border.width: 1
+
+                        Rectangle {
+                            width: parent.width * (deviceModel.progress / 100.0)
+                            height: parent.height
+                            color: "#3498db"
+                            radius: 10
+
+                            Behavior on width {
+                                NumberAnimation {
+                                    duration: 200
+                                    easing.type: Easing.OutCubic
+                                }
+                            }
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: deviceModel.progress + "%"
+                            color: "#2c3e50"
+                            font.pixelSize: 12
+                            font.bold: true
+                        }
                     }
                 }
             }
@@ -204,7 +237,7 @@ ApplicationWindow {
 
                 Text {
                     text: deviceModel.loading ?
-                        "检测中..." :
+                        (deviceModel.progressText || "检测中...") + " (" + deviceModel.progress + "%)" :
                         "设备数量: " + (deviceListView.count || 0)
                     color: deviceModel.loading ? "#3498db" : "white"
                     font.pixelSize: 12

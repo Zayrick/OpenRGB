@@ -37,10 +37,20 @@ static void DeviceListModelDetectionEndCallback(void* this_ptr)
     }
 }
 
+static void DeviceListModelProgressCallback(void* this_ptr)
+{
+    DeviceListModel* model = static_cast<DeviceListModel*>(this_ptr);
+    if (model) {
+        model->onDetectionProgressUpdate();
+    }
+}
+
 DeviceListModel::DeviceListModel(QObject *parent)
     : QAbstractListModel(parent)
     , m_resourceManager(nullptr)
     , m_loading(false)
+    , m_progress(0)
+    , m_progressText("")
 {
     // 获取 ResourceManager 实例
     m_resourceManager = ResourceManager::get();
@@ -50,6 +60,7 @@ DeviceListModel::DeviceListModel(QObject *parent)
         m_resourceManager->RegisterDeviceListChangeCallback(DeviceListModelCallback, this);
         m_resourceManager->RegisterDetectionStartCallback(DeviceListModelDetectionStartCallback, this);
         m_resourceManager->RegisterDetectionEndCallback(DeviceListModelDetectionEndCallback, this);
+        m_resourceManager->RegisterDetectionProgressCallback(DeviceListModelProgressCallback, this);
     }
 
     // 初始化设备列表
@@ -63,6 +74,7 @@ DeviceListModel::~DeviceListModel()
         m_resourceManager->UnregisterDeviceListChangeCallback(DeviceListModelCallback, this);
         m_resourceManager->UnregisterDetectionStartCallback(DeviceListModelDetectionStartCallback, this);
         m_resourceManager->UnregisterDetectionEndCallback(DeviceListModelDetectionEndCallback, this);
+        m_resourceManager->UnregisterDetectionProgressCallback(DeviceListModelProgressCallback, this);
     }
 }
 
@@ -122,12 +134,38 @@ bool DeviceListModel::loading() const
     return m_loading;
 }
 
+int DeviceListModel::progress() const
+{
+    return m_progress;
+}
+
+QString DeviceListModel::progressText() const
+{
+    return m_progressText;
+}
+
 void DeviceListModel::setLoading(bool loading)
 {
     if (m_loading != loading) {
         m_loading = loading;
         emit loadingChanged();
         qDebug() << "DeviceListModel: 加载状态变更为:" << (loading ? "加载中" : "已完成");
+    }
+}
+
+void DeviceListModel::setProgress(int progress)
+{
+    if (m_progress != progress) {
+        m_progress = progress;
+        emit progressChanged();
+    }
+}
+
+void DeviceListModel::setProgressText(const QString& text)
+{
+    if (m_progressText != text) {
+        m_progressText = text;
+        emit progressTextChanged();
     }
 }
 
@@ -152,8 +190,30 @@ void DeviceListModel::onDetectionEnded()
 {
     qDebug() << "DeviceListModel: 设备检测结束";
     setLoading(false);
+    // 重置进度信息
+    setProgress(0);
+    setProgressText("");
     // 检测结束后刷新一次设备列表，确保显示最新状态
     updateDeviceList();
+}
+
+void DeviceListModel::onDetectionProgressUpdate()
+{
+    if (!m_resourceManager) {
+        return;
+    }
+
+    // 从 ResourceManager 获取当前检测进度
+    unsigned int progressPercent = m_resourceManager->GetDetectionPercent();
+    const char* progressString = m_resourceManager->GetDetectionString();
+
+    // 更新进度属性
+    setProgress(static_cast<int>(progressPercent));
+    if (progressString) {
+        setProgressText(QString::fromUtf8(progressString));
+    }
+
+    qDebug() << "DeviceListModel: 进度更新 -" << progressPercent << "%" << QString::fromUtf8(progressString ? progressString : "");
 }
 
 void DeviceListModel::updateDeviceList()
