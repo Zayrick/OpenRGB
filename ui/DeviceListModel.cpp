@@ -12,29 +12,58 @@
 #include "RGBController.h"
 #include "ResourceManager.h"
 
+// 静态回调函数，用于注册到ResourceManager
+static void DeviceListModelCallback(void* this_ptr)
+{
+    DeviceListModel* model = static_cast<DeviceListModel*>(this_ptr);
+    if (model) {
+        model->onDeviceListChanged();
+    }
+}
+
+static void DeviceListModelDetectionStartCallback(void* this_ptr)
+{
+    DeviceListModel* model = static_cast<DeviceListModel*>(this_ptr);
+    if (model) {
+        model->onDetectionStarted();
+    }
+}
+
+static void DeviceListModelDetectionEndCallback(void* this_ptr)
+{
+    DeviceListModel* model = static_cast<DeviceListModel*>(this_ptr);
+    if (model) {
+        model->onDetectionEnded();
+    }
+}
+
 DeviceListModel::DeviceListModel(QObject *parent)
     : QAbstractListModel(parent)
     , m_resourceManager(nullptr)
-    , m_autoRefreshTimer(new QTimer(this))
-    , m_autoRefreshEnabled(false)
+    , m_loading(false)
 {
     // 获取 ResourceManager 实例
     m_resourceManager = ResourceManager::get();
 
-    // 设置自动刷新定时器
-    m_autoRefreshTimer->setInterval(1000); // 每秒刷新一次
-    connect(m_autoRefreshTimer, &QTimer::timeout, this, &DeviceListModel::onAutoRefreshTimer);
+    // 注册回调函数到 ResourceManager
+    if (m_resourceManager) {
+        m_resourceManager->RegisterDeviceListChangeCallback(DeviceListModelCallback, this);
+        m_resourceManager->RegisterDetectionStartCallback(DeviceListModelDetectionStartCallback, this);
+        m_resourceManager->RegisterDetectionEndCallback(DeviceListModelDetectionEndCallback, this);
+    }
 
     // 初始化设备列表
     updateDeviceList();
-
-    // 默认启用自动刷新
-    startAutoRefresh();
 }
 
 DeviceListModel::~DeviceListModel()
 {
-    stopAutoRefresh();
+    // 注销回调函数
+    if (m_resourceManager) {
+        m_resourceManager->UnregisterDeviceListChangeCallback(DeviceListModelCallback, this);
+        m_resourceManager->UnregisterDetectionStartCallback(DeviceListModelDetectionStartCallback, this);
+        m_resourceManager->UnregisterDetectionEndCallback(DeviceListModelDetectionEndCallback, this);
+    }
 }
 
 int DeviceListModel::rowCount(const QModelIndex &parent) const
@@ -88,31 +117,42 @@ QHash<int, QByteArray> DeviceListModel::roleNames() const
     return roles;
 }
 
+bool DeviceListModel::loading() const
+{
+    return m_loading;
+}
+
+void DeviceListModel::setLoading(bool loading)
+{
+    if (m_loading != loading) {
+        m_loading = loading;
+        emit loadingChanged();
+        qDebug() << "DeviceListModel: 加载状态变更为:" << (loading ? "加载中" : "已完成");
+    }
+}
+
 void DeviceListModel::refreshDeviceList()
 {
     updateDeviceList();
 }
 
-void DeviceListModel::startAutoRefresh()
+void DeviceListModel::onDeviceListChanged()
 {
-    if (!m_autoRefreshEnabled) {
-        m_autoRefreshEnabled = true;
-        m_autoRefreshTimer->start();
-        qDebug() << "DeviceListModel: 自动刷新已启用";
-    }
+    qDebug() << "DeviceListModel: 收到设备列表变更通知";
+    updateDeviceList();
 }
 
-void DeviceListModel::stopAutoRefresh()
+void DeviceListModel::onDetectionStarted()
 {
-    if (m_autoRefreshEnabled) {
-        m_autoRefreshEnabled = false;
-        m_autoRefreshTimer->stop();
-        qDebug() << "DeviceListModel: 自动刷新已停用";
-    }
+    qDebug() << "DeviceListModel: 设备检测开始";
+    setLoading(true);
 }
 
-void DeviceListModel::onAutoRefreshTimer()
+void DeviceListModel::onDetectionEnded()
 {
+    qDebug() << "DeviceListModel: 设备检测结束";
+    setLoading(false);
+    // 检测结束后刷新一次设备列表，确保显示最新状态
     updateDeviceList();
 }
 

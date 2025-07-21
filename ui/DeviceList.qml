@@ -9,8 +9,6 @@ ApplicationWindow {
     visible: true
     title: "OpenRGB 设备列表"
 
-    property alias deviceModel: deviceListView.model
-
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 10
@@ -22,12 +20,34 @@ ApplicationWindow {
             color: "#2c3e50"
             radius: 5
 
-            Text {
-                anchors.centerIn: parent
-                text: "OpenRGB 设备管理器"
-                color: "white"
-                font.pixelSize: 20
-                font.bold: true
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 15
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "OpenRGB 设备管理器"
+                    color: "white"
+                    font.pixelSize: 20
+                    font.bold: true
+                }
+
+                // 加载指示器
+                BusyIndicator {
+                    Layout.preferredWidth: 30
+                    Layout.preferredHeight: 30
+                    visible: deviceModel.loading
+                    running: deviceModel.loading
+
+                    ToolTip.visible: loadingMouseArea.containsMouse
+                    ToolTip.text: "正在检测设备..."
+
+                    MouseArea {
+                        id: loadingMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                    }
+                }
             }
         }
 
@@ -41,6 +61,7 @@ ApplicationWindow {
                 id: deviceListView
                 anchors.fill: parent
                 spacing: 5
+                model: deviceModel
 
                 delegate: Rectangle {
                     width: deviceListView.width
@@ -125,13 +146,47 @@ ApplicationWindow {
                 }
 
                 // 空状态显示
-                Text {
+                Column {
                     anchors.centerIn: parent
-                    visible: deviceListView.count === 0
-                    text: "未检测到任何设备\n请确保设备已正确连接"
-                    color: "#7f8c8d"
-                    font.pixelSize: 16
-                    horizontalAlignment: Text.AlignHCenter
+                    visible: deviceListView.count === 0 && !deviceModel.loading
+                    spacing: 10
+
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: "未检测到任何设备"
+                        color: "#7f8c8d"
+                        font.pixelSize: 18
+                        font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: "请确保设备已正确连接并重新启动应用"
+                        color: "#95a5a6"
+                        font.pixelSize: 14
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+                }
+
+                // 加载状态显示
+                Column {
+                    anchors.centerIn: parent
+                    visible: deviceListView.count === 0 && deviceModel.loading
+                    spacing: 15
+
+                    BusyIndicator {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        running: deviceModel.loading
+                    }
+
+                    Text {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: "正在检测设备，请稍候..."
+                        color: "#3498db"
+                        font.pixelSize: 16
+                        horizontalAlignment: Text.AlignHCenter
+                    }
                 }
             }
         }
@@ -148,8 +203,10 @@ ApplicationWindow {
                 anchors.margins: 10
 
                 Text {
-                    text: "设备数量: " + (deviceListView.count || 0)
-                    color: "white"
+                    text: deviceModel.loading ?
+                        "检测中..." :
+                        "设备数量: " + (deviceListView.count || 0)
+                    color: deviceModel.loading ? "#3498db" : "white"
                     font.pixelSize: 12
                 }
 
@@ -158,7 +215,7 @@ ApplicationWindow {
                 }
 
                 Text {
-                    text: "OpenRGB 自定义界面"
+                    text: "OpenRGB 自定义界面 - 事件驱动版"
                     color: "#bdc3c7"
                     font.pixelSize: 10
                 }
